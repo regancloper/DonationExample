@@ -11,19 +11,20 @@ const cardStyles = {
   boxShadow: "5px 5px 25px 0 rgba(46,61,73,.2)",
   backgroundColor: "#fff",
   borderRadius: "6px",
-  maxWidth: "300px",
+  width: "300px",
 }
 
 const buttonStyles = {
   display: "block",
   fontSize: "13px",
   textAlign: "center",
-  color: "#000",
+  color: "#fff",
   padding: "12px",
   boxShadow: "2px 5px 10px rgba(0,0,0,.1)",
-  backgroundColor: "rgb(255, 178, 56)",
+  backgroundColor: "seagreen",
   borderRadius: "6px",
   letterSpacing: "1.5px",
+  cursor: "pointer",
 }
 
 const buttonDisabledStyles = {
@@ -41,16 +42,19 @@ const formatPrice = (amount, currency) => {
   return numberFormat.format(price)
 }
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ option, recurring, flexible }) => {
   const [loading, setLoading] = useState(false)
+
   const handleSubmit = async event => {
     event.preventDefault()
     setLoading(true)
-    const price = new FormData(event.target).get("priceSelect")
+    const amount = flexible
+      ? Number(new FormData(event.target).get("amtSelect"))
+      : 1
     const stripe = await getStripe()
     const { error } = await stripe.redirectToCheckout({
-      mode: "payment",
-      lineItems: [{ price, quantity: 1 }],
+      mode: recurring ? "subscription" : "payment",
+      lineItems: [{ price: option.id, quantity: amount }],
       successUrl: `${window.location.origin}/page-2/`,
       cancelUrl: `${window.location.origin}/advanced`,
     })
@@ -63,21 +67,16 @@ const ProductCard = ({ product }) => {
   return (
     <div style={cardStyles}>
       <form onSubmit={handleSubmit}>
-        <fieldset style={{ border: "none" }}>
-          <legend>
-            <h4>{product.name}</h4>
-          </legend>
-          <label>
-            Price{" "}
-            <select name="priceSelect">
-              {product.prices.map(price => (
-                <option key={price.id} value={price.id}>
-                  {formatPrice(price.unit_amount, price.currency)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </fieldset>
+        <h4>{option.product.name}</h4>
+        {flexible ? (
+          <p>
+            Price: $
+            <input type="number" min="1" name="amtSelect" />
+          </p>
+        ) : (
+          <p>Price: {formatPrice(option.unit_amount, option.currency)}</p>
+        )}
+
         <button
           disabled={loading}
           style={
